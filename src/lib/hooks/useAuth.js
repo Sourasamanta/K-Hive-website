@@ -12,6 +12,26 @@ export const useAuth = () => {
   });
 };
 
+export const useUpdateUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: authApi.updateUser,
+    onSuccess: (data) => {
+      queryClient.setQueryData(['auth', 'user'], {
+        success: true,
+        user: data.user
+      });
+      
+      // Optionally invalidate to refetch
+      queryClient.invalidateQueries(['auth', 'user']);
+    },
+    onError: (error) => {
+      console.error('Update user error:', error);
+    }
+  });
+};
+
 export const useLogout = () => {
   const queryClient = useQueryClient();
   const router = useRouter();

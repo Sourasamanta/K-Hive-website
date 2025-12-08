@@ -15,12 +15,7 @@ export default function Page() {
 
   return (
     <div>
-      <Navbar />
       <Hero />
-      {/* <SignUpModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      /> */}
     </div>
   );
 }

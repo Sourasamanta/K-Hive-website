@@ -15,15 +15,22 @@ export const postsApi = {
   },
 
   // Get user's posts
-  getPostsByUserId: async (userId) => {
-    const { data } = await apiClient.get(`/post/user/${userId}`);
+  getPostsByUserId: async (userId, params = {}) => {
+    const { data } = await apiClient.get(`/post/user/${userId}`, { params });
     return data;
   },
 
-  // Search posts
+  // Search posts - updated to match backend parameters
   searchPosts: async (query, params = {}) => {
+    const { page = 1, sortBy = 'relevance', limit = 10 } = params;
+    
     const { data } = await apiClient.get('/post/search', {
-      params: { q: query, ...params },
+      params: { 
+        q: query,
+        page,
+        sortBy,
+        limit 
+      },
     });
     return data;
   },

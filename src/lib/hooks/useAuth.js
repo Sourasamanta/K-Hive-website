@@ -7,8 +7,10 @@ export const useAuth = () => {
   return useQuery({
     queryKey: ['auth', 'user'],
     queryFn: authApi.getCurrentUser,
-    retry: false,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    retry: false, // Don't retry if user is not authenticated
+    refetchOnWindowFocus: false, // Don't refetch when user focuses window
   });
 };
 

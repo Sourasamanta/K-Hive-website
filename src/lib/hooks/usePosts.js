@@ -18,19 +18,27 @@ export const usePost = (postId) => {
   });
 };
 
-export const useUserPosts = (userId) => {
+export const useUserPosts = (userId, { page = 1, limit = 10 } = {}) => {
   return useQuery({
-    queryKey: ['posts', 'user', userId],
-    queryFn: () => postsApi.getPostsByUserId(userId),
+    queryKey: ['posts', 'user', userId, page, limit],
+    queryFn: () => postsApi.getPostsByUserId(userId, { page, limit }),
     enabled: !!userId,
   });
 };
 
-export const useSearchPosts = (query, { page = 1 } = {}) => {
+export const useSearchPosts = (query, { page = 1, sortBy = 'relevance', limit = 10 } = {}) => {
+  // Trim the query to match backend behavior
+  const trimmedQuery = query?.trim() || '';
+  
   return useQuery({
-    queryKey: ['posts', 'search', query, page],
-    queryFn: () => postsApi.searchPosts(query, { page }),
-    enabled: !!query,
+    queryKey: ['posts', 'search', trimmedQuery, page, sortBy, limit],
+    queryFn: () => postsApi.searchPosts(trimmedQuery, { page, sortBy, limit }),
+    enabled: trimmedQuery.length >= 2,
+    placeholderData: (previousData) => previousData,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    gcTime: 1000 * 60 * 5, // 5 minutes (formerly cacheTime)
+    retry: false,
+    refetchOnWindowFocus: true,
   });
 };
 
@@ -64,7 +72,9 @@ export const useDeletePost = () => {
   return useMutation({
     mutationFn: postsApi.deletePost,
     onSuccess: (data, postId) => {
+      // Invalidate all post lists
       queryClient.invalidateQueries({ queryKey: ['posts'] });
+      // Remove the specific post from cache
       queryClient.removeQueries({ queryKey: ['posts', postId] });
     },
   });
@@ -81,9 +91,38 @@ export const useVotePost = () => {
         return postsApi.downvotePost(postId);
       }
     },
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    // Optimistic update for better UX
+    onMutate: async ({ postId, voteType }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['posts', postId] });
+
+      // Snapshot the previous value
+      const previousPost = queryClient.getQueryData(['posts', postId]);
+
+      // Optimistically update to the new value
+      if (previousPost?.data) {
+        queryClient.setQueryData(['posts', postId], (old) => ({
+          ...old,
+          data: {
+            ...old.data,
+            upvotes: voteType === 'upvote' ? old.data.upvotes + 1 : old.data.upvotes,
+            downvotes: voteType === 'downvote' ? old.data.downvotes + 1 : old.data.downvotes,
+          },
+        }));
+      }
+
+      return { previousPost };
+    },
+    // If the mutation fails, use the context returned from onMutate to roll back
+    onError: (err, variables, context) => {
+      if (context?.previousPost) {
+        queryClient.setQueryData(['posts', variables.postId], context.previousPost);
+      }
+    },
+    // Always refetch after error or success
+    onSettled: (data, error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['posts', variables.postId] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
     },
   });
 };

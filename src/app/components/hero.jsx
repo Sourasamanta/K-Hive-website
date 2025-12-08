@@ -16,6 +16,7 @@ import {
   ArrowUp,
   ArrowDown,
   Menu,
+  RefreshCw,
 } from "lucide-react";
 import { usePosts, useVotePost } from "@/lib/hooks/usePosts";
 
@@ -23,6 +24,8 @@ export default function RedditFeed() {
   const [activeFilter, setActiveFilter] = useState("hot");
   const [showCommentInput, setShowCommentInput] = useState(null);
   const [page, setPage] = useState(1);
+  const [lastRefresh, setLastRefresh] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Map filter names to API sortBy values
   const sortByMap = {
@@ -33,11 +36,7 @@ export default function RedditFeed() {
   };
 
   // Fetch posts using the hook
-  const {
-    data: postsData,
-    isLoading,
-    error,
-  } = usePosts({
+  const { data: postsData, isLoading, error, refetch } = usePosts({
     page,
     sort: sortByMap[activeFilter],
     limit: 10,
@@ -47,6 +46,13 @@ export default function RedditFeed() {
 
   const handleVote = (postId, voteType) => {
     votePost({ postId, voteType });
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setLastRefresh(new Date());
+    setTimeout(() => setIsRefreshing(false), 600);
   };
 
   // Format time ago
@@ -89,17 +95,17 @@ export default function RedditFeed() {
                 key={filter.name}
                 onClick={() => setActiveFilter(filter.name)}
                 className={`
-                                    flex items-center gap-1.5 sm:gap-2 md:gap-3 
-                                    px-2.5 sm:px-4 md:px-5 lg:px-6
-                                    py-2 sm:py-2.5 md:py-3 lg:py-3.5 
-                                    text-xs sm:text-sm md:text-base
-                                    transition-all relative rounded-lg whitespace-nowrap flex-shrink-0
-                                    ${
-                                      activeFilter === filter.name
-                                        ? "text-white bg-[#272729]"
-                                        : "text-gray-400 hover:text-gray-200 hover:bg-[#1c1c1d]"
-                                    }
-                                `}
+                  flex items-center gap-1.5 sm:gap-2 md:gap-3 
+                  px-2.5 sm:px-4 md:px-5 lg:px-6
+                  py-2 sm:py-2.5 md:py-3 lg:py-3.5 
+                  text-xs sm:text-sm md:text-base
+                  transition-all relative rounded-lg whitespace-nowrap flex-shrink-0
+                  ${
+                    activeFilter === filter.name
+                      ? "text-white bg-[#272729]"
+                      : "text-gray-400 hover:text-gray-200 hover:bg-[#1c1c1d]"
+                  }
+                `}
               >
                 <filter.icon className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
                 <span className="font-semibold hidden xs:inline">
@@ -110,6 +116,27 @@ export default function RedditFeed() {
                 )}
               </button>
             ))}
+
+            {/* Spacer to push refresh button to the right */}
+            <div className="flex-1"></div>
+
+            {/* Refresh Button */}
+            <div className="flex flex-col items-end gap-1 ml-auto">
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="flex items-center gap-2 px-3 py-2 text-white bg-[#272729] rounded-lg hover:bg-[#3a3a3c] transition-all disabled:opacity-50 flex-shrink-0"
+              >
+                <RefreshCw
+                  className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
+                />
+              </button>
+              {lastRefresh && (
+                <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                  {formatTimeAgo(lastRefresh)}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -171,7 +198,7 @@ export default function RedditFeed() {
                       </span>
                       <span className="hidden xs:inline">•</span>
                       <span className="hover:underline cursor-pointer truncate max-w-[80px] sm:max-w-none">
-                         u/{post.user?.name || 'Unknown User'}
+                        u/{post.user?.name || "Unknown User"}
                       </span>
                       <span className="hidden xs:inline">•</span>
                       <span className="text-[9px] sm:text-[10px] md:text-xs">

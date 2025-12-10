@@ -22,7 +22,7 @@ export const commentsApi = {
 
   // Create comment
   createComment: async (commentData) => {
-    const { data } = await apiClient.post('/comment', commentData);
+    const { data } = await apiClient.post("/comment", commentData);
     return data;
   },
 
@@ -59,6 +59,15 @@ export const commentsApi = {
   // Get reply count
   getReplyCount: async (commentId) => {
     const { data } = await apiClient.get(`/comment/${commentId}/reply-count`);
+    return data;
+  },
+
+  // Get comments by user ID
+  getCommentsByUserId: async (userId, params = {}) => {
+    const { page = 1, limit = 20 } = params;
+    const { data } = await apiClient.get(`/comment/user/${userId}`, {
+      params: { page, limit },
+    });
     return data;
   },
 };

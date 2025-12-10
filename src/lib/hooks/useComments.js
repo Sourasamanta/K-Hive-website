@@ -65,6 +65,19 @@ export const useDeleteComment = () => {
   });
 };
 
+export const useUserComments = (
+  userId,
+  { page = 1, limit = 20 } = {}
+) => {
+  return useQuery({
+    queryKey: ['comments', 'user', userId, page, limit],
+    queryFn: () =>
+      commentsApi.getCommentsByUserId(userId, { page, limit }),
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+};
+
 export const useVoteComment = () => {
   const queryClient = useQueryClient();
 

@@ -17,11 +17,12 @@ import { useAuth, useLogout, useUpdateUser } from "@/lib/hooks/useAuth";
 import { useUserProfile } from "@/lib/hooks/useUsers";
 import { useQuery } from "@tanstack/react-query";
 import { postsApi } from "@/lib/api/posts";
+import { useUserComments } from "@/lib/hooks/useComments";
 import { useParams } from "next/navigation";
 
 export default function ProfilePage() {
   const params = useParams();
-  const profileUserId = params?.userId; // Get userId from URL if exists
+  const profileUserId = params?.userId;
   
   const [activeTab, setActiveTab] = useState("posts");
   const [showEditModal, setShowEditModal] = useState(false);
@@ -31,10 +32,9 @@ export default function ProfilePage() {
   const { data: authData, isLoading: authLoading } = useAuth();
   const currentUser = authData?.user || null;
   
-  // Profile being viewed (could be current user or another user)
+  // Profile being viewed
   const { data: profileData, isLoading: profileLoading } = useUserProfile(profileUserId);
   const profileUser = profileData?.user || null;
-  console.log(profileUser);
   
   // Determine which user to display
   const isOwnProfile = !profileUserId || profileUserId === currentUser?.userId;
@@ -47,8 +47,13 @@ export default function ProfilePage() {
   const { data: postsData, isLoading: postsLoading } = useQuery({
     queryKey: ["posts", "user", displayUser?.userId],
     queryFn: () => postsApi.getPostsByUserId(displayUser?.userId),
-    enabled: !!displayUser?.userId && activeTab === "posts",
+    enabled: !!displayUser?.userId,
   });
+
+  const { data: commentsData, isLoading: commentsLoading } = useUserComments(
+    displayUser?.userId,
+    { page: 1, limit: 50 }
+  );
 
   // Format date
   const formatDate = (dateString) => {
@@ -66,8 +71,7 @@ export default function ProfilePage() {
   };
 
   // Handle update
-  const handleUpdateUser = (e) => {
-    e.preventDefault();
+  const handleUpdateUser = () => {
     if (editName.trim() && editName !== currentUser?.name) {
       updateUser(
         { name: editName.trim() },
@@ -107,13 +111,12 @@ export default function ProfilePage() {
     return count.toString();
   };
 
-  // Calculate total karma
+  // Calculate total karma 
   const calculateKarma = () => {
-    if (!postsData?.data) return 0;
-    return postsData.data.reduce(
-      (total, post) => total + (post.upvotes - post.downvotes),
-      0
-    );
+    const postCount = postsData?.data?.length || 0;
+    const commentCount = commentsData?.data?.length || 0;
+    
+    return (postCount * 2) + commentCount;
   };
 
   if (isLoading) {
@@ -144,7 +147,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-[#020d17]">
-      {/* Edit Modal - Only show for own profile */}
+      {/* Edit Modal */}
       {isOwnProfile && showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div className="bg-[#0d1d2c] border border-[#343536] rounded-lg w-full max-w-md p-6">
@@ -159,7 +162,7 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            <form onSubmit={handleUpdateUser}>
+            <div>
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-gray-400 mb-2">
                   Username
@@ -170,10 +173,13 @@ export default function ProfilePage() {
                   onChange={(e) => setEditName(e.target.value)}
                   className="w-full px-4 py-3 bg-[#1a1a1b] border border-gray-700 rounded-lg text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#1dddf2] transition-all"
                   placeholder="Enter your username"
-                  required
-                  minLength={2}
-                  maxLength={100}
                   disabled={isUpdating}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleUpdateUser();
+                    }
+                  }}
                 />
               </div>
 
@@ -187,14 +193,15 @@ export default function ProfilePage() {
                   Cancel
                 </button>
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleUpdateUser}
                   disabled={isUpdating || !editName.trim() || editName === currentUser?.name}
                   className="flex-1 px-4 py-3 bg-[#1dddf2] text-[#020d17] rounded-lg hover:bg-[#18b8cc] transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUpdating ? "Saving..." : "Save Changes"}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
@@ -238,7 +245,6 @@ export default function ProfilePage() {
                   </span>
                 )}
               </div>
-              {/* Only show email on own profile */}
               {isOwnProfile && displayUser.gmailId && (
                 <p className="text-gray-400 text-sm sm:text-base mb-3">
                   {displayUser.gmailId}
@@ -252,7 +258,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Action Buttons - Only show for own profile */}
+            {/* Action Buttons */}
             {isOwnProfile && (
               <div className="flex gap-2 w-full sm:w-auto">
                 <button 
@@ -283,13 +289,13 @@ export default function ProfilePage() {
             </div>
             <div className="text-center">
               <div className="text-2xl sm:text-3xl font-bold text-white mb-1">
-                {displayUser.postIds?.length || 0}
+                {postsData?.data?.length || 0}
               </div>
               <div className="text-xs sm:text-sm text-gray-400">Posts</div>
             </div>
             <div className="text-center">
               <div className="text-2xl sm:text-3xl font-bold text-white mb-1">
-                {displayUser.commentIds?.length || 0}
+                {commentsData?.data?.length || 0}
               </div>
               <div className="text-xs sm:text-sm text-gray-400">Comments</div>
             </div>
@@ -446,18 +452,82 @@ export default function ProfilePage() {
           )}
 
           {activeTab === "comments" && (
-            <div className="bg-[#0d1d2c] border border-[#343536] rounded-lg p-12 text-center">
-              <MessageSquare className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <h3 className="text-xl text-white font-bold mb-2">
-                No comments yet
-              </h3>
-              <p className="text-gray-400">
-                {isOwnProfile
-                  ? "Your comments will appear here once you start engaging with posts."
-                  : `${displayUser.name} hasn't commented yet.`
-                }
-              </p>
-            </div>
+            <>
+              {commentsLoading ? (
+                <div className="flex justify-center py-20">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+                </div>
+              ) : commentsData?.data?.length > 0 ? (
+                <div className="space-y-4">
+                  {commentsData.data.map((comment) => (
+                    <div
+                      key={comment.commentId}
+                      className="bg-[#0d1d2c] border border-[#343536] rounded-lg hover:border-[#1dddf2] transition-all duration-300 p-4"
+                    >
+                      <div className="flex gap-3">
+                        {/* Vote section */}
+                        <div className="flex flex-col items-center gap-1">
+                          <button className="text-gray-400 hover:text-[#ff4500] p-1 rounded transition-all">
+                            <ArrowUp className="w-4 h-4" />
+                          </button>
+                          <span className="text-white font-bold text-xs">
+                            {formatVoteCount(comment.upvotes - comment.downvotes)}
+                          </span>
+                          <button className="text-gray-400 hover:text-[#7193ff] p-1 rounded transition-all">
+                            <ArrowDown className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        {/* Comment Content */}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2 text-xs text-gray-400">
+                            <span className="font-semibold text-white">
+                              {displayUser.name}
+                            </span>
+                            <span>•</span>
+                            <span>{formatTimeAgo(comment.createdAt)}</span>
+                            {comment.isEdited && (
+                              <>
+                                <span>•</span>
+                                <span className="italic">edited</span>
+                              </>
+                            )}
+                          </div>
+
+                          <p className="text-gray-300 text-sm mb-3 whitespace-pre-wrap">
+                            {comment.content}
+                          </p>
+
+                          <div className="flex items-center gap-2">
+                            <button className="flex items-center gap-1 px-2 py-1 text-gray-400 hover:bg-[#272729] rounded text-xs transition-all">
+                              <MessageSquare className="w-3 h-3" />
+                              <span>Reply</span>
+                            </button>
+                            <button className="flex items-center gap-1 px-2 py-1 text-gray-400 hover:bg-[#272729] rounded text-xs transition-all">
+                              <Share2 className="w-3 h-3" />
+                              <span>Share</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-[#0d1d2c] border border-[#343536] rounded-lg p-12 text-center">
+                  <MessageSquare className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                  <h3 className="text-xl text-white font-bold mb-2">
+                    No comments yet
+                  </h3>
+                  <p className="text-gray-400">
+                    {isOwnProfile
+                      ? "Your comments will appear here once you start engaging with posts."
+                      : `${displayUser.name} hasn't commented yet.`
+                    }
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           {activeTab === "saved" && isOwnProfile && (

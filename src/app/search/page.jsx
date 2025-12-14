@@ -2,10 +2,10 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSearch } from "@/lib/hooks/useSearch";
-import { 
-  Search, 
-  TrendingUp, 
-  Clock, 
+import {
+  Search,
+  TrendingUp,
+  Clock,
   Sparkles,
   ChevronLeft,
   ChevronRight,
@@ -16,9 +16,12 @@ import {
   Share2,
   Bookmark,
   AlertCircle,
-  Zap
+  Zap,
+  Check,
+  Copy
 } from "lucide-react";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { useVotePost } from "@/lib/hooks/usePosts";
 
 export default function SearchResultsPage() {
   const router = useRouter();
@@ -28,24 +31,21 @@ export default function SearchResultsPage() {
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState("relevance");
   const [showImageModal, setShowImageModal] = useState(null);
+  const [copiedPostId, setCopiedPostId] = useState(null);
   const limit = 10;
 
   // Get auth data for enhanced search toggle
   const { data: authData } = useAuth();
   const user = authData?.user || null;
 
+  const { mutate: votePost } = useVotePost();
+
   // Fetch search results
-  const { 
-    data, 
-    isLoading, 
-    isError, 
-    error, 
-    isFetching 
-  } = useSearch(query, { 
-    page, 
-    sortBy, 
+  const { data, isLoading, isError, error, isFetching } = useSearch(query, {
+    page,
+    sortBy,
     limit,
-    enhanced 
+    enhanced,
   });
 
   // Reset page when query changes
@@ -65,10 +65,40 @@ export default function SearchResultsPage() {
 
   const toggleEnhancedSearch = () => {
     if (!user) return;
-    const newUrl = enhanced 
+    const newUrl = enhanced
       ? `/search?q=${encodeURIComponent(query)}`
       : `/search?q=${encodeURIComponent(query)}&enhanced=true`;
     router.push(newUrl);
+  };
+
+  const handleVote = (postId, voteType) => {
+    votePost({ postId, voteType });
+  };
+
+  // Share functionality
+  const handleShare = async (postId) => {
+    const postUrl = `${window.location.origin}/post/${postId}`;
+    
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Check out this post',
+          url: postUrl
+        });
+      } else {
+        await navigator.clipboard.writeText(postUrl);
+        setCopiedPostId(postId);
+        setTimeout(() => setCopiedPostId(null), 2000);
+      }
+    } catch (error) {
+      try {
+        await navigator.clipboard.writeText(postUrl);
+        setCopiedPostId(postId);
+        setTimeout(() => setCopiedPostId(null), 2000);
+      } catch (err) {
+        console.error('Failed to share:', err);
+      }
+    }
   };
 
   // Format time ago
@@ -102,9 +132,7 @@ export default function SearchResultsPage() {
           <h2 className="text-2xl font-bold text-gray-400 mb-2">
             Start Searching
           </h2>
-          <p className="text-gray-500">
-            Enter at least 2 characters to search
-          </p>
+          <p className="text-gray-500">Enter at least 2 characters to search</p>
         </div>
       </div>
     );
@@ -127,32 +155,34 @@ export default function SearchResultsPage() {
               </span>
             )}
           </div>
-          
+
           <div className="flex flex-col gap-3">
             {/* Query Info */}
             <p className="text-gray-400 text-sm">
-              Showing results for: <span className="text-[#1dddf2] font-semibold">"{query}"</span>
+              Showing results for:{" "}
+              <span className="text-[#1dddf2] font-semibold">"{query}"</span>
               {data?.pagination && (
-                <span className="ml-2">
-                  ({data.pagination.total} results)
-                </span>
+                <span className="ml-2">({data.pagination.total} results)</span>
               )}
             </p>
 
             {/* Enhanced Search Info for Comments */}
-            {enhanced && data?.matchingComments && data.matchingComments.length > 0 && (
-              <div className="bg-gradient-to-r from-[#1dddf2]/10 to-[#00ff11]/10 border border-[#1dddf2]/30 rounded-lg p-3 flex items-start gap-2">
-                <Zap className="w-4 h-4 text-[#1dddf2] flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-[#1dddf2] text-sm font-semibold">
-                    Found in {data.matchingComments.length} comment{data.matchingComments.length !== 1 ? 's' : ''}
-                  </p>
-                  <p className="text-gray-400 text-xs mt-0.5">
-                    Enhanced search found matches in post comments
-                  </p>
+            {enhanced &&
+              data?.matchingComments &&
+              data.matchingComments.length > 0 && (
+                <div className="bg-gradient-to-r from-[#1dddf2]/10 to-[#00ff11]/10 border border-[#1dddf2]/30 rounded-lg p-3 flex items-start gap-2">
+                  <Zap className="w-4 h-4 text-[#1dddf2] flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-[#1dddf2] text-sm font-semibold">
+                      Found in {data.matchingComments.length} comment
+                      {data.matchingComments.length !== 1 ? "s" : ""}
+                    </p>
+                    <p className="text-gray-400 text-xs mt-0.5">
+                      Enhanced search found matches in post comments
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Controls Row */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -163,7 +193,7 @@ export default function SearchResultsPage() {
                   {[
                     { value: "relevance", label: "Relevance", icon: Sparkles },
                     { value: "recent", label: "Recent", icon: Clock },
-                    { value: "popular", label: "Popular", icon: TrendingUp }
+                    { value: "popular", label: "Popular", icon: TrendingUp },
                   ].map(({ value, label, icon: Icon }) => (
                     <button
                       key={value}
@@ -191,8 +221,10 @@ export default function SearchResultsPage() {
                       : "bg-[#0d1d2c] text-gray-400 hover:bg-[#323234] border border-[#343536] hover:border-[#1dddf2]/50"
                   }`}
                 >
-                  <Sparkles className={`w-4 h-4 ${enhanced ? 'animate-pulse' : ''}`} />
-                  <span>{enhanced ? 'Enhanced' : 'Standard'} Search</span>
+                  <Sparkles
+                    className={`w-4 h-4 ${enhanced ? "animate-pulse" : ""}`}
+                  />
+                  <span>{enhanced ? "Enhanced" : "Standard"} Search</span>
                 </button>
               )}
             </div>
@@ -204,7 +236,7 @@ export default function SearchResultsPage() {
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-12 h-12 text-[#1dddf2] animate-spin mb-4" />
             <p className="text-gray-400">
-              {enhanced ? 'Running enhanced search...' : 'Searching...'}
+              {enhanced ? "Running enhanced search..." : "Searching..."}
             </p>
           </div>
         )}
@@ -215,7 +247,9 @@ export default function SearchResultsPage() {
             <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
             <p className="text-red-400 font-medium mb-2">Search Failed</p>
             <p className="text-gray-400 text-sm">
-              {error?.response?.data?.message || error?.message || "Something went wrong"}
+              {error?.response?.data?.message ||
+                error?.message ||
+                "Something went wrong"}
             </p>
           </div>
         )}
@@ -258,7 +292,9 @@ export default function SearchResultsPage() {
                 {isFetching && !isLoading && (
                   <div className="bg-[#1dddf2]/10 border border-[#1dddf2]/30 rounded-lg px-4 py-2 flex items-center gap-2">
                     <Loader2 className="w-4 h-4 text-[#1dddf2] animate-spin" />
-                    <span className="text-sm text-[#1dddf2]">Updating results...</span>
+                    <span className="text-sm text-[#1dddf2]">
+                      Updating results...
+                    </span>
                   </div>
                 )}
 
@@ -275,29 +311,6 @@ export default function SearchResultsPage() {
                     </div>
 
                     <div className="flex">
-                      {/* Vote section */}
-                      <div className="bg-[#0d1d2c] w-8 sm:w-10 md:w-12 flex flex-col items-center gap-0.5 sm:gap-1 py-1.5 sm:py-2 md:py-3 flex-shrink-0">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                          className="text-gray-400 hover:text-[#ff4500] p-0.5 sm:p-1 rounded transition-all duration-300 hover:scale-110 active:scale-95"
-                        >
-                          <ArrowUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
-                        </button>
-                        <span className="text-white font-bold text-[10px] sm:text-xs md:text-sm leading-tight">
-                          {formatVoteCount((post.upvotes || 0) - (post.downvotes || 0))}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                          className="text-gray-400 hover:text-[#7193ff] p-0.5 sm:p-1 rounded transition-all duration-300 hover:scale-110 active:scale-95"
-                        >
-                          <ArrowDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
-                        </button>
-                      </div>
-
                       {/* Main Content */}
                       <div className="flex-1 p-1.5 sm:p-2 md:p-3 lg:p-4 min-w-0">
                         <div className="flex gap-2 sm:gap-3 md:gap-4">
@@ -305,12 +318,10 @@ export default function SearchResultsPage() {
                           <div className="flex-1 min-w-0">
                             {/* Post Header */}
                             <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 mb-1 sm:mb-1.5 md:mb-2 text-[10px] sm:text-xs md:text-sm text-gray-400 flex-wrap">
-                              <span className="font-semibold hover:underline cursor-pointer truncate max-w-[100px] sm:max-w-none">
-                                r/{post.tags?.[0] || "general"}
-                              </span>
                               <span className="hidden xs:inline">•</span>
                               <span className="hover:underline cursor-pointer truncate max-w-[80px] sm:max-w-none">
-                                u/{post.user?.name || post.userName || "Unknown"}
+                                u/
+                                {post.user?.name || post.userName || "Unknown"}
                               </span>
                               <span className="hidden xs:inline">•</span>
                               <span className="text-[9px] sm:text-[10px] md:text-xs">
@@ -336,13 +347,47 @@ export default function SearchResultsPage() {
                               {post.content}
                             </p>
 
+                            {/* Tags */}
+                            {post.tags && post.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 sm:gap-2 mb-2">
+                                {post.tags.slice(0, 3).map((tag, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="px-2 py-0.5 sm:py-1 bg-[#1dddf2]/10 text-[#1dddf2] rounded-full text-[10px] sm:text-xs"
+                                  >
+                                    #{tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
                             {/* Action buttons */}
                             <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2 flex-wrap">
+                              {/* Like */}
+                              <button
+                                className="flex items-center gap-1.5 px-2 py-1 text-gray-400 rounded-md transition-all duration-300 active:scale-95"
+                              >
+                                <ArrowUp className="w-4 h-4 sm:w-5 sm:h-5" />
+                                <span className="text-xs sm:text-sm font-semibold text-white">
+                                  {formatVoteCount(post.upvotes)}
+                                </span>
+                              </button>
+
+                              {/* Dislike */}
+                              <button
+                                className="flex items-center gap-1.5 px-2 py-1 text-gray-400 rounded-md transition-all duration-300 active:scale-95"
+                              >
+                                <ArrowDown className="w-4 h-4 sm:w-5 sm:h-5" />
+                                <span className="text-xs sm:text-sm font-semibold text-white">
+                                  {formatVoteCount(post.downvotes)}
+                                </span>
+                              </button>
+
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                 }}
-                                className="flex items-center gap-0.5 sm:gap-1 md:gap-2 px-1.5 sm:px-2 md:px-3 py-1 sm:py-1.5 md:py-2 text-gray-400 hover:bg-[#272729] rounded sm:rounded-md md:rounded-lg transition-all duration-300 active:scale-95"
+                                className="flex items-center gap-0.5 sm:gap-1 md:gap-2 px-1.5 sm:px-2 md:px-3 py-1 sm:py-1.5 md:py-2 text-gray-400 rounded sm:rounded-md md:rounded-lg transition-all duration-300 active:scale-95"
                               >
                                 <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
                                 <span className="text-[10px] sm:text-xs md:text-sm font-semibold">
@@ -351,30 +396,34 @@ export default function SearchResultsPage() {
                               </button>
 
                               <button
-                                onClick={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleShare(post.postId);
+                                }}
                                 className="flex items-center gap-0.5 sm:gap-1 md:gap-2 px-1.5 sm:px-2 md:px-3 py-1 sm:py-1.5 md:py-2 text-gray-400 hover:bg-[#272729] rounded sm:rounded-md md:rounded-lg transition-all duration-300 active:scale-95"
                               >
-                                <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
-                                <span className="text-[10px] sm:text-xs md:text-sm font-semibold hidden md:inline">
-                                  Share
-                                </span>
-                              </button>
-
-                              <button
-                                onClick={(e) => e.stopPropagation()}
-                                className="flex items-center gap-0.5 sm:gap-1 md:gap-2 px-1.5 sm:px-2 md:px-3 py-1 sm:py-1.5 md:py-2 text-gray-400 hover:bg-[#272729] rounded sm:rounded-md md:rounded-lg transition-all duration-300 active:scale-95"
-                              >
-                                <Bookmark className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
-                                <span className="text-[10px] sm:text-xs md:text-sm font-semibold hidden md:inline">
-                                  Save
-                                </span>
+                                {copiedPostId === post.postId ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-green-400" />
+                                    <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-green-400 hidden md:inline">
+                                      Copied!
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+                                    <span className="text-[10px] sm:text-xs md:text-sm font-semibold hidden md:inline">
+                                      Share
+                                    </span>
+                                  </>
+                                )}
                               </button>
                             </div>
                           </div>
 
                           {/* Image on Right Side */}
                           {post.media && post.media.length > 0 && (
-                            <div 
+                            <div
                               className="flex-shrink-0 w-20 h-full sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-md sm:rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -389,40 +438,28 @@ export default function SearchResultsPage() {
                             </div>
                           )}
                         </div>
-
-                        {/* Tags */}
-                        {post.tags && post.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 sm:gap-2 mt-2 sm:mt-3">
-                            {post.tags.slice(0, 3).map((tag, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-0.5 sm:py-1 bg-[#1dddf2]/10 text-[#1dddf2] rounded-full text-[10px] sm:text-xs"
-                              >
-                                #{tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
                       </div>
                     </div>
 
                     {/* Expanded Image Modal */}
-                    {showImageModal === post.postId && post.media && post.media.length > 0 && (
-                      <div
-                        className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowImageModal(null);
-                        }}
-                      >
-                        <img
-                          src={post.media[0]}
-                          alt={post.title}
-                          className="max-w-full max-h-full object-contain"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </div>
-                    )}
+                    {showImageModal === post.postId &&
+                      post.media &&
+                      post.media.length > 0 && (
+                        <div
+                          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowImageModal(null);
+                          }}
+                        >
+                          <img
+                            src={post.media[0]}
+                            alt={post.title}
+                            className="max-w-full max-h-full object-contain"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      )}
                   </div>
                 ))}
 
@@ -430,13 +467,14 @@ export default function SearchResultsPage() {
                 {data.pagination && data.pagination.totalPages > 1 && (
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 mt-6 border-t border-[#343536]">
                     <p className="text-sm text-gray-400">
-                      Page {data.pagination.currentPage} of {data.pagination.totalPages}
-                      {" "}({data.pagination.total} total results)
+                      Page {data.pagination.currentPage} of{" "}
+                      {data.pagination.totalPages} ({data.pagination.total}{" "}
+                      total results)
                     </p>
 
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={page === 1}
                         className="flex items-center gap-1 px-4 py-2 bg-[#0d1d2c] border border-[#343536] text-gray-300 rounded-lg hover:border-[#1dddf2]/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
@@ -446,36 +484,43 @@ export default function SearchResultsPage() {
 
                       {/* Page Numbers */}
                       <div className="flex gap-1">
-                        {Array.from({ length: Math.min(5, data.pagination.totalPages) }, (_, i) => {
-                          let pageNum;
-                          if (data.pagination.totalPages <= 5) {
-                            pageNum = i + 1;
-                          } else if (page <= 3) {
-                            pageNum = i + 1;
-                          } else if (page >= data.pagination.totalPages - 2) {
-                            pageNum = data.pagination.totalPages - 4 + i;
-                          } else {
-                            pageNum = page - 2 + i;
-                          }
+                        {Array.from(
+                          { length: Math.min(5, data.pagination.totalPages) },
+                          (_, i) => {
+                            let pageNum;
+                            if (data.pagination.totalPages <= 5) {
+                              pageNum = i + 1;
+                            } else if (page <= 3) {
+                              pageNum = i + 1;
+                            } else if (page >= data.pagination.totalPages - 2) {
+                              pageNum = data.pagination.totalPages - 4 + i;
+                            } else {
+                              pageNum = page - 2 + i;
+                            }
 
-                          return (
-                            <button
-                              key={pageNum}
-                              onClick={() => setPage(pageNum)}
-                              className={`w-10 h-10 rounded-lg font-medium transition-all ${
-                                page === pageNum
-                                  ? "bg-[#1dddf2] text-white"
-                                  : "bg-[#0d1d2c] border border-[#343536] text-gray-300 hover:border-[#1dddf2]/50"
-                              }`}
-                            >
-                              {pageNum}
-                            </button>
-                          );
-                        })}
+                            return (
+                              <button
+                                key={pageNum}
+                                onClick={() => setPage(pageNum)}
+                                className={`w-10 h-10 rounded-lg font-medium transition-all ${
+                                  page === pageNum
+                                    ? "bg-[#1dddf2] text-white"
+                                    : "bg-[#0d1d2c] border border-[#343536] text-gray-300 hover:border-[#1dddf2]/50"
+                                }`}
+                              >
+                                {pageNum}
+                              </button>
+                            );
+                          }
+                        )}
                       </div>
 
                       <button
-                        onClick={() => setPage(p => Math.min(data.pagination.totalPages, p + 1))}
+                        onClick={() =>
+                          setPage((p) =>
+                            Math.min(data.pagination.totalPages, p + 1)
+                          )
+                        }
                         disabled={page >= data.pagination.totalPages}
                         className="flex items-center gap-1 px-4 py-2 bg-[#0d1d2c] border border-[#343536] text-gray-300 rounded-lg hover:border-[#1dddf2]/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >

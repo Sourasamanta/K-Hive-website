@@ -433,7 +433,7 @@ export default function CommentsSection({ postId, router, user }) {
       {/* Header with refresh button */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-200">
-          Comments ({pagination?.total || 0})
+          Comments 
         </h3>
         
         <button

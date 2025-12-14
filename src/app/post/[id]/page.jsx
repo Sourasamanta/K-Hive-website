@@ -59,9 +59,29 @@ export default function PostPage() {
   // Get user's current vote state (-1, 0, 1)
   const userVote = post?.vote || 0;
 
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    // You can add a toast notification here
+  const handleShare = async (postId) => {
+    const postUrl = `${window.location.origin}/post/${post._id}`;
+    
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Check out this post',
+          url: postUrl
+        });
+      } else {
+        await navigator.clipboard.writeText(postUrl);
+        setCopiedPostId(postId);
+        setTimeout(() => setCopiedPostId(null), 2000);
+      }
+    } catch (error) {
+      try {
+        await navigator.clipboard.writeText(postUrl);
+        setCopiedPostId(postId);
+        setTimeout(() => setCopiedPostId(null), 2000);
+      } catch (err) {
+        console.error('Failed to share:', err);
+      }
+    }
   };
 
   // Loading state
@@ -259,13 +279,6 @@ export default function PostPage() {
                 <Share2 className="w-5 h-5 group-hover:text-gray-300" />
                 <span className="text-sm font-semibold hidden sm:inline group-hover:text-gray-300">
                   Share
-                </span>
-              </button>
-
-              <button className="flex items-center gap-2 px-3 py-2 text-gray-400 hover:bg-[#1a2836] rounded-full transition-all duration-200 active:scale-95 group">
-                <Bookmark className="w-5 h-5 group-hover:text-gray-300" />
-                <span className="text-sm font-semibold hidden sm:inline group-hover:text-gray-300">
-                  Save
                 </span>
               </button>
             </div>

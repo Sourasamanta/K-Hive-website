@@ -17,7 +17,9 @@ import {
   ArrowDown,
   Menu,
   RefreshCw,
-  SendHorizontal
+  SendHorizontal,
+  Check,
+  Copy
 } from "lucide-react";
 import { usePosts, useVotePost } from "@/lib/hooks/usePosts";
 import { useCreateComment } from "@/lib/hooks/useComments";
@@ -31,11 +33,11 @@ export default function RedditFeed() {
   const [lastRefresh, setLastRefresh] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [text, setText] = useState("");
+  const [copiedPostId, setCopiedPostId] = useState(null);
   const router = useRouter();
   const { data: authData } = useAuth();
   const user = authData?.user || null;
 
-  // Map filter names to API sortBy values
   const sortByMap = {
     hot: "upvotes",
     new: "createdAt",
@@ -43,7 +45,6 @@ export default function RedditFeed() {
     rising: "createdAt",
   };
 
-  // Fetch posts using the hook
   const { data: postsData, isLoading, error, refetch } = usePosts({
     page,
     sort: sortByMap[activeFilter],
@@ -56,7 +57,18 @@ export default function RedditFeed() {
   const { mutate: createComment, isPending } = useCreateComment();
 
   const handleVote = (postId, voteType) => {
-    votePost({ postId, voteType });
+    votePost(
+      { postId, voteType },
+      {
+        onSuccess: () => {
+          // Refetch posts to get updated data
+          refetch();
+        },
+        onError: (error) => {
+          console.error("Failed to vote:", error);
+        },
+      }
+    );
   };
 
   const handleRefresh = async () => {
@@ -66,7 +78,31 @@ export default function RedditFeed() {
     setTimeout(() => setIsRefreshing(false), 600);
   };
 
-  // Format time ago
+  const handleShare = async (postId) => {
+    const postUrl = `${window.location.origin}/post/${postId}`;
+    
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Check out this post',
+          url: postUrl
+        });
+      } else {
+        await navigator.clipboard.writeText(postUrl);
+        setCopiedPostId(postId);
+        setTimeout(() => setCopiedPostId(null), 2000);
+      }
+    } catch (error) {
+      try {
+        await navigator.clipboard.writeText(postUrl);
+        setCopiedPostId(postId);
+        setTimeout(() => setCopiedPostId(null), 2000);
+      } catch (err) {
+        console.error('Failed to share:', err);
+      }
+    }
+  };
+
   const formatTimeAgo = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -81,7 +117,6 @@ export default function RedditFeed() {
     return `${days}d ago`;
   };
 
-  // Format vote count (e.g., 1500 -> 1.5k)
   const formatVoteCount = (count) => {
     if (count >= 1000) {
       return `${(count / 1000).toFixed(1)}k`;
@@ -114,9 +149,7 @@ export default function RedditFeed() {
 
   return (
     <div className="min-h-screen bg-[#020d17]">
-      {/* Main Container */}
       <div className="w-full max-w-[1200px] mx-auto px-2 sm:px-4 md:px-6 lg:px-8">
-        {/* Filter Tabs */}
         <div className="sticky top-0 z-10 bg-[#020d17] pt-3 sm:pt-4 md:pt-6 pb-2 sm:pb-3">
           <div className="flex gap-1 sm:gap-2 md:gap-3 border-b border-[#343536] overflow-x-auto scrollbar-hide">
             {[
@@ -150,10 +183,8 @@ export default function RedditFeed() {
               </button>
             ))}
 
-            {/* Spacer to push refresh button to the right */}
             <div className="flex-1"></div>
 
-            {/* Refresh Button */}
             <div className="flex align-middle items-center">
               <button
                 onClick={handleRefresh}
@@ -168,14 +199,12 @@ export default function RedditFeed() {
           </div>
         </div>
 
-        {/* Loading State */}
         {isLoading && (
           <div className="flex justify-center items-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
           </div>
         )}
 
-        {/* Error State */}
         {error && (
           <div className="text-center py-20">
             <p className="text-red-400 text-lg">
@@ -184,7 +213,6 @@ export default function RedditFeed() {
           </div>
         )}
 
-        {/* Posts Feed */}
         {!isLoading && !error && postsData?.data && (
           <div className="space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-6 pb-12 sm:pb-16 md:pb-20">
             {postsData.data.map((post) => (
@@ -192,21 +220,13 @@ export default function RedditFeed() {
                 key={post.postId}
                 className="bg-[#0d1d2c] border border-[#343536] rounded-md sm:rounded-lg hover:border-[#1dddf2] transition-all duration-300 overflow-hidden relative"
               >
-                {/* Liquid shimmer overlay */}
                 <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-50 sm:opacity-100">
                   <div className="w-1/3 h-full bg-gradient-to-r from-transparent via-white/5 to-transparent" />
                 </div>
 
                 <div className="flex">
-            
-                  {/* Main Content */}
                   <div className="flex-1 p-1.5 sm:p-2 md:p-3 lg:p-4 min-w-0">
-                    {/* Post Header */}
                     <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2 mb-1 sm:mb-1.5 md:mb-2 text-[10px] sm:text-xs md:text-sm text-gray-400 flex-wrap">
-                      <span className="font-semibold hover:underline cursor-pointer truncate max-w-[100px] sm:max-w-none">
-                        r/{post.tags?.[0] || "general"}
-                      </span>
-                      <span className="hidden xs:inline">•</span>
                       <span onClick={() => router.push(`/profile/${post.userId}`)} className="hover:underline cursor-pointer truncate max-w-[80px] sm:max-w-none">
                         u/{post.user?.name || "Unknown User"}
                       </span>
@@ -217,14 +237,11 @@ export default function RedditFeed() {
                     </div>
 
                     <div className="flex flex-col md:flex-row gap-2 sm:gap-3 md:gap-4">
-                      {/* Left side - Text content (60% on desktop) */}
                       <div className="flex-1 md:w-[60%] min-w-0">
-                        {/* Title */}
                         <h2 onClick={() => router.push(`/post/${post.postId}`)} className="text-white text-sm sm:text-base md:text-lg lg:text-xl font-bold tracking-tight mb-1.5 sm:mb-2 cursor-pointer transition-colors duration-300 line-clamp-2 sm:line-clamp-3 md:line-clamp-none break-words">
                           {post.title}
                         </h2>
 
-                        {/* Content */}
                         <p className="text-gray-400 text-[11px] sm:text-xs md:text-sm mb-1.5 sm:mb-2 md:mb-3 break-words">
                           {post.content && post.content.length > 150
                             ? `${post.content.substring(0, 250)}...`
@@ -232,7 +249,6 @@ export default function RedditFeed() {
                         </p>
                       </div>
 
-                      {/* Right side - Image (40% on desktop, fixed height) */}
                       {post.media && post.media.length > 0 && (
                         <div
                           className="w-full h-52 md:w-[45%] md:h-36 lg:h-40 xl:h-44 flex-shrink-0 rounded-md sm:rounded-lg overflow-hidden cursor-pointer"
@@ -253,7 +269,19 @@ export default function RedditFeed() {
                       )}
                     </div>
 
-                    {/* Expanded Image Modal */}
+                    {post.tags && post.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 sm:gap-2 mt-2 mb-2">
+                        {post.tags.slice(0, 3).map((tag, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-0.5 sm:py-1 bg-[#1dddf2]/10 text-[#1dddf2] rounded-full text-[10px] sm:text-xs"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
                     {post.media && post.media.length > 0 && showCommentInput === `img-${post.postId}` && (
                       <div
                         className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
@@ -268,32 +296,35 @@ export default function RedditFeed() {
                       </div>
                     )}
 
-                    {/* Action buttons */}
-                  <div className="flex items-center gap-3 sm:gap-4 md:gap-5 mt-2 sm:mt-3 flex-wrap">
-
-                      {/* Like */}
+                    <div className="flex items-center gap-3 sm:gap-4 md:gap-5 mt-2 sm:mt-3 flex-wrap">
                       <button
                         onClick={() => handleVote(post.postId, "upvote")}
-                        className="flex items-center gap-1.5 px-2 py-1 text-gray-400 hover:text-green-400 hover:bg-[#272729] rounded-md transition-all duration-300 active:scale-95"
+                        className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-all duration-300 active:scale-95 ${
+                          post.vote === 1
+                            ? "bg-[#1dddf2] text-white"
+                            : "text-gray-400 hover:text-[#1dddf2] hover:bg-[#272729]"
+                        }`}
                       >
-                        <ArrowUp className="w-4 h-4 sm:w-5 sm:h-5" />
-                        <span className="text-xs sm:text-sm font-semibold text-white">
+                        <ArrowUp className="w-4 h-4 sm:w-5 sm:h-5" fill={post.vote === 1 ? "currentColor" : "none"} />
+                        <span className="text-xs sm:text-sm font-semibold">
                           {formatVoteCount(post.upvotes)}
                         </span>
                       </button>
 
-                      {/* Dislike */}
                       <button
                         onClick={() => handleVote(post.postId, "downvote")}
-                        className="flex items-center gap-1.5 px-2 py-1 text-gray-400 hover:text-red-400 hover:bg-[#272729] rounded-md transition-all duration-300 active:scale-95"
+                        className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-all duration-300 active:scale-95 ${
+                          post.vote === -1
+                            ? "bg-[#7193ff] text-white"
+                            : "text-gray-400 hover:text-[#7193ff] hover:bg-[#272729]"
+                        }`}
                       >
-                        <ArrowDown className="w-4 h-4 sm:w-5 sm:h-5" />
-                        <span className="text-xs sm:text-sm font-semibold text-white">
+                        <ArrowDown className="w-4 h-4 sm:w-5 sm:h-5" fill={post.vote === -1 ? "currentColor" : "none"} />
+                        <span className="text-xs sm:text-sm font-semibold">
                           {formatVoteCount(post.downvotes)}
                         </span>
                       </button>
 
-                      {/* Comments */}
                       <button
                         onClick={() =>
                           setShowCommentInput(
@@ -302,28 +333,34 @@ export default function RedditFeed() {
                         }
                         className="flex items-center gap-1.5 px-2 py-1 text-gray-400 hover:bg-[#272729] rounded-md transition-all duration-300 active:scale-95"
                       >
-<<<<<<< HEAD
-                        <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
-                        <span className="text-xs sm:text-sm font-semibold">
-                          {post.commentCount || 0}
-=======
                         <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
                         <span className="text-[10px] sm:text-xs md:text-sm font-semibold">
                           {post.commentCount || post.commentIds?.length || 0}
->>>>>>> 7e8dfc883a6e5ca0e01bcbb93b5edc45b1394fc2
                         </span>
                       </button>
 
-                      {/* Share */}
-                      <button className="flex items-center gap-1.5 px-2 py-1 text-gray-400 hover:bg-[#272729] rounded-md transition-all duration-300 active:scale-95">
-                        <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                        <span className="text-xs sm:text-sm font-semibold hidden md:inline">
-                          Share
-                        </span>
+                      <button 
+                        onClick={() => handleShare(post.postId)}
+                        className="flex items-center gap-1.5 px-2 py-1 text-gray-400 hover:bg-[#272729] rounded-md transition-all duration-300 active:scale-95"
+                      >
+                        {copiedPostId === post.postId ? (
+                          <>
+                            <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
+                            <span className="text-xs sm:text-sm font-semibold text-green-400 hidden md:inline">
+                              Copied!
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                            <span className="text-xs sm:text-sm font-semibold hidden md:inline">
+                              Share
+                            </span>
+                          </>
+                        )}
                       </button>
-
                     </div>
-                    {/* Comment Input */}
+
                     {showCommentInput === post.postId && (
                       <div className="mt-2 sm:mt-3 relative">
                         <input
@@ -341,23 +378,15 @@ export default function RedditFeed() {
                           autoFocus
                         />
 
-                        {/* Lucide icon button */}
                         <button
                           onClick={() => handleSubmit(text, post.postId, null)}
-                          disabled={!text.trim() || !user}   // ← disabled if no text or not logged in
-                          className={`absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer
-               p-1 rounded transition-all
-               ${text.trim() && user
-                              ? "text-blue-500 hover:text-blue-400"
-                              : "text-gray-600 cursor-not-allowed opacity-50"
-                            }`}
+                          disabled={!text.trim() || !user}
+                          className={`absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-1 rounded transition-all ${text.trim() && user ? "text-blue-500 hover:text-blue-400" : "text-gray-600 cursor-not-allowed opacity-50"}`}
                         >
                           <SendHorizontal size={18} />
                         </button>
-                        </div>
+                      </div>
                     )}
-
-
                   </div>
                 </div>
               </div>
@@ -365,14 +394,12 @@ export default function RedditFeed() {
           </div>
         )}
 
-        {/* Empty State */}
         {!isLoading && !error && postsData?.data?.length === 0 && (
           <div className="text-center py-20">
             <p className="text-gray-400 text-lg">No posts found</p>
           </div>
         )}
 
-        {/* Pagination */}
         {!isLoading && !error && postsData?.pagination && (
           <div className="flex justify-center gap-4 pb-8">
             <button
@@ -405,7 +432,6 @@ export default function RedditFeed() {
           scrollbar-width: none;
         }
 
-        /* Extra small screens */
         @media (min-width: 475px) {
           .xs\\:inline {
             display: inline;

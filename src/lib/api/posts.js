@@ -64,4 +64,12 @@ export const postsApi = {
     const { data } = await apiClient.patch(`/post/downvote/${postId}`);
     return data;
   },
+
+  getPinnedPosts: async (params = {}) => {
+    const { page = 1, limit = 10 } = params;
+    const { data } = await apiClient.get('/post/pinned', { 
+      params: { page, limit } 
+    });
+    return data;
+  },
 };

@@ -26,6 +26,18 @@ export const useUserPosts = (userId, { page = 1, limit = 10 } = {}) => {
   });
 };
 
+export const usePinnedPosts = ({ page = 1, limit = 10 } = {}) => {
+  return useQuery({
+    queryKey: ['posts', 'pinned', page, limit],
+    queryFn: () => postsApi.getPinnedPosts({ page, limit }),
+    staleTime: 1000 * 60 * 10, // 10 minutes - pinned posts change less frequently
+    gcTime: 1000 * 60 * 30, // 30 minutes cache
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnMount: false, // Don't refetch on component mount if data exists
+    retry: 2,
+  });
+};
+
 export const useSearchPosts = (query, { page = 1, sortBy = 'relevance', limit = 10 } = {}) => {
   const trimmedQuery = query?.trim() || '';
   

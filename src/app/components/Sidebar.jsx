@@ -6,6 +6,8 @@ import {
   MessageSquare,
   Bell,
   FileText,
+  Users,
+  Settings,
   ChevronLeft,
   ChevronRight,
   X,
@@ -37,9 +39,11 @@ export default function Sidebar({ isMobileOpen, onMobileClose, onMobileOpen }) {
 
   const menuItems = [
     { icon: Home, label: "Home", path: "/" },
-    { icon: MessageSquare, label: "Feedback", path: "/feedback" },
+    {icon: Users, label: "About Us", path: "/about"},
     { icon: Bell, label: "Announcements", path: "/announcements" },
-    { icon: FileText, label: "Terms & Conditions", path: "/terms" },
+    { icon: MessageSquare, label: "Feedback", path: "/feedback" },
+    { icon: Settings, label: "Settings", path: "/settings" },
+    { icon: FileText, label: "Legal Notices", path: "/legal" },
   ];
 
   const handleNavigation = (path) => {
@@ -112,12 +116,11 @@ export default function Sidebar({ isMobileOpen, onMobileClose, onMobileOpen }) {
 
       {/* Footer */}
       {!isCollapsed && (
-        <div className="p-4 border-t border-[#1dddf2]/20">
-          <img
-            src="/banner.png"
-            alt="K-Hive Community"
-            className="w-full h-auto rounded-lg"
-          />
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-[#1dddf2]/20">
+          <p className="text-xs text-gray-500 text-center">
+            K-Hive Community
+          </p>
+          <p className="text-xs text-gray-600 text-center mt-1">v1.0.0</p>
         </div>
       )}
     </div>
@@ -188,11 +191,9 @@ export default function Sidebar({ isMobileOpen, onMobileClose, onMobileOpen }) {
 
         {/* Footer */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-[#1dddf2]/20">
-          <img
-            src="banner.png"
-            alt="K-Hive Community"
-            className="w-full h-auto rounded-lg"
-          />
+          <p className="text-xs text-gray-500 text-center">
+            K-Hive Community
+          </p>
           <p className="text-xs text-gray-600 text-center mt-1">v1.0.0</p>
         </div>
       </div>

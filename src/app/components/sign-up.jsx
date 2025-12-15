@@ -250,20 +250,10 @@ export default function SignUpModal({ isOpen, onClose, initialMode = 'signup' })
             <div className="relative p-8 pt-12">
               {/* Header */}
               <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 rounded-2xl mb-4 shadow-lg glow-effect">
-                  <svg
-                    className="w-10 h-10 text-white"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                    <path d="M2 17l10 5 10-5" />
-                    <path d="M2 12l10 5 10-5" />
-                  </svg>
+                <div className="inline-flex items-center justify-center">
+                <img src="/KHive/k-logo2.png" alt="K-Hive" className="w-32 h-10 mb-3" />
                 </div>
-                <h2 className="text-3xl font-extrabold text-white mb-3 tracking-tight">
+                <h2 className="text-2xl font-extrabold text-white mb-3 tracking-tight">
                   {mode === "signup" ? "Join the Hive" : "Welcome Back"}
                 </h2>
                 <p className="text-slate-400 text-sm">

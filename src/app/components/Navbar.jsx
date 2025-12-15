@@ -4,9 +4,6 @@ import {
   Plus,
   User,
   Menu,
-  X,
-  LogOut,
-  Settings,
 } from "lucide-react";
 import SignUpModal from "./sign-up";
 import { useAuth, useLogout } from "@/lib/hooks/useAuth";
@@ -19,10 +16,8 @@ import { useToast } from "@/components/Toast";
 import SearchBar from "../components/Searchbar";
 
 export default function RedditNavbar({ onMobileSidebarToggle }) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
@@ -40,9 +35,8 @@ export default function RedditNavbar({ onMobileSidebarToggle }) {
     authApi.loginWithGoogle();
   };
 
-  const handleLogout = () => {
-    logout();
-    setShowUserMenu(false);
+  const handleAvatarClick = () => {
+    router.push("/profile");
   };
 
   const handleCreatePost = async (postData) => {
@@ -201,101 +195,27 @@ export default function RedditNavbar({ onMobileSidebarToggle }) {
                     </span>
                   </button>
 
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowUserMenu(!showUserMenu)}
-                      className="flex items-center gap-2 xl:gap-3 px-3 xl:px-4 py-2 xl:py-3 text-gray-200 hover:bg-[#323234] border border-transparent hover:border-[#1dddf2]/30 rounded-full transition-all"
-                    >
-                      <span className="text-sm xl:text-base font-medium whitespace-nowrap">
-                        {user.name}
-                      </span>
-                      {user.avatarLink ? (
-                        <img
-                          src={user.avatarLink}
-                          alt={user.name}
-                          className="w-8 h-8 xl:w-9 xl:h-9 rounded-full object-cover border-2 border-[#1dddf2]/50"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 xl:w-9 xl:h-9 rounded-full bg-gradient-to-br from-[#1dddf2] to-[#00ff11] flex items-center justify-center border-2 border-[#1dddf2]/50">
-                          <span className="text-white font-bold text-sm xl:text-base">
-                            {user.name?.[0]?.toUpperCase() || "U"}
-                          </span>
-                        </div>
-                      )}
-                    </button>
-
-                    {showUserMenu && (
-                      <div className="absolute right-0 mt-2 w-64 bg-[#0d1d2c] border border-[#1dddf2]/30 shadow-[0_0_20px_rgba(29,221,242,0.2)] rounded-lg overflow-hidden slide-down">
-                        <div className="px-4 py-3 bg-gradient-to-r from-[#1dddf2]/10 to-[#00ff11]/10 border-b border-[#1dddf2]/20">
-                          <div className="flex items-center gap-3">
-                            {user.avatarLink ? (
-                              <img
-                                src={user.avatarLink}
-                                alt={user.name}
-                                className="w-12 h-12 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#1dddf2] to-[#00ff11] flex items-center justify-center">
-                                <span className="text-white font-bold text-lg">
-                                  {user.name?.[0]?.toUpperCase() || "U"}
-                                </span>
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-white font-semibold truncate">
-                                {user.name}
-                              </p>
-                              <p className="text-gray-400 text-sm truncate">
-                                {user.gmailId || user.email}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="py-2">
-                          <button
-                            onClick={() => {
-                              router.push("/profile");
-                              setShowUserMenu(false);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-200 hover:bg-[#323234] transition-all"
-                          >
-                            <User className="w-5 h-5 text-[#1dddf2]" />
-                            <div className="flex-1 text-left">
-                              <p className="text-sm font-medium">Profile</p>
-                              <p className="text-xs text-gray-400">View your profile</p>
-                            </div>
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              setShowUserMenu(false);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-200 hover:bg-[#323234] transition-all"
-                          >
-                            <Settings className="w-5 h-5 text-[#1dddf2]" />
-                            <div className="flex-1 text-left">
-                              <p className="text-sm font-medium">Settings</p>
-                              <p className="text-xs text-gray-400">Manage preferences</p>
-                            </div>
-                          </button>
-
-                          <div className="border-t border-[#343536] my-2"></div>
-
-                          <button
-                            onClick={handleLogout}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 transition-all"
-                          >
-                            <LogOut className="w-5 h-5" />
-                            <div className="flex-1 text-left">
-                              <p className="text-sm font-medium">Logout</p>
-                              <p className="text-xs text-red-300/70">Sign out of your account</p>
-                            </div>
-                          </button>
-                        </div>
+                  <button
+                    onClick={handleAvatarClick}
+                    className="flex items-center gap-2 xl:gap-3 px-3 xl:px-4 py-2 xl:py-3 text-gray-200 hover:bg-[#323234] border border-transparent hover:border-[#1dddf2]/30 rounded-full transition-all"
+                  >
+                    <span className="text-sm xl:text-base font-medium whitespace-nowrap">
+                      {user.name}
+                    </span>
+                    {user.avatarLink ? (
+                      <img
+                        src={user.avatarLink}
+                        alt={user.name}
+                        className="w-8 h-8 xl:w-9 xl:h-9 rounded-full object-cover border-2 border-[#1dddf2]/50"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 xl:w-9 xl:h-9 rounded-full bg-gradient-to-br from-[#1dddf2] to-[#00ff11] flex items-center justify-center border-2 border-[#1dddf2]/50">
+                        <span className="text-white font-bold text-sm xl:text-base">
+                          {user.name?.[0]?.toUpperCase() || "U"}
+                        </span>
                       </div>
                     )}
-                  </div>
+                  </button>
                 </>
               ) : (
                 <>
@@ -311,12 +231,9 @@ export default function RedditNavbar({ onMobileSidebarToggle }) {
 
                   <button
                     onClick={() => setIsModalOpen(true)}
-                    className="relative bg-gradient-to-r from-[#1dddf2] to-[#00ff11] hover:shadow-[0_0_20px_rgba(29,221,242,0.6)] text-white px-5 xl:px-8 py-2 xl:py-3 rounded-full font-semibold text-sm xl:text-base transition-colors overflow-hidden"
+                    className="px-5 xl:px-8 py-2 xl:py-3 text-gray-100 border border-[#1dddf2] neon-border hover:border-[#1dddf2]/30 hover:shadow-[0_0_10px_rgba(29,221,242,0.3)] rounded-full font-semibold text-sm xl:text-base transition-all whitespace-nowrap"
                   >
-                    <span className="relative z-10 whitespace-nowrap">
-                      Sign Up
-                    </span>
-                    <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent translate-x-[-100%] animate-shimmer"></span>
+                    Sign Up
                   </button>
                 </>
               )}
@@ -331,115 +248,37 @@ export default function RedditNavbar({ onMobileSidebarToggle }) {
                   {/* Create Post Button - Mobile */}
                   <button
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="p-2 text-white bg-gradient-to-r from-[#1dddf2] to-[#00ff11] rounded-full hover:shadow-[0_0_15px_rgba(29,221,242,0.6)] transition-all"
+                    className="p-2 text-gray-100 border border-[#1dddf2] neon-border hover:border-[#1dddf2]/30 hover:shadow-[0_0_10px_rgba(29,221,242,0.3)] rounded-full transition-all"
                   >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-5 h-5 text-white" />
                   </button>
 
-                  {/* User Avatar with Dropdown */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowUserMenu(!showUserMenu)}
-                      className="flex items-center"
-                    >
-                      {user.avatarLink ? (
-                        <img
-                          src={user.avatarLink}
-                          alt={user.name}
-                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border-2 border-[#1dddf2]/50"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-[#1dddf2] to-[#00ff11] flex items-center justify-center border-2 border-[#1dddf2]/50">
-                          <span className="text-white font-semibold text-sm">
-                            {user.name?.[0]?.toUpperCase() || "U"}
-                          </span>
-                        </div>
-                      )}
-                    </button>
-
-                    {/* Mobile User Dropdown */}
-                    {showUserMenu && (
-                      <div className="absolute right-0 mt-2 w-64 bg-[#0d1d2c] border border-[#1dddf2]/30 shadow-[0_0_20px_rgba(29,221,242,0.2)] rounded-lg overflow-hidden slide-down">
-                        <div className="px-4 py-3 bg-gradient-to-r from-[#1dddf2]/10 to-[#00ff11]/10 border-b border-[#1dddf2]/20">
-                          <div className="flex items-center gap-3">
-                            {user.avatarLink ? (
-                              <img
-                                src={user.avatarLink}
-                                alt={user.name}
-                                className="w-12 h-12 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#1dddf2] to-[#00ff11] flex items-center justify-center">
-                                <span className="text-white font-bold text-lg">
-                                  {user.name?.[0]?.toUpperCase() || "U"}
-                                </span>
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-white font-semibold truncate">
-                                {user.name}
-                              </p>
-                              <p className="text-gray-400 text-sm truncate">
-                                {user.gmailId || user.email}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="py-2">
-                          <button
-                            onClick={() => {
-                              router.push("/profile");
-                              setShowUserMenu(false);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-200 hover:bg-[#323234] transition-all"
-                          >
-                            <User className="w-5 h-5 text-[#1dddf2]" />
-                            <div className="flex-1 text-left">
-                              <p className="text-sm font-medium">Profile</p>
-                              <p className="text-xs text-gray-400">View your profile</p>
-                            </div>
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              setShowUserMenu(false);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-200 hover:bg-[#323234] transition-all"
-                          >
-                            <Settings className="w-5 h-5 text-[#1dddf2]" />
-                            <div className="flex-1 text-left">
-                              <p className="text-sm font-medium">Settings</p>
-                              <p className="text-xs text-gray-400">Manage preferences</p>
-                            </div>
-                          </button>
-
-                          <div className="border-t border-[#343536] my-2"></div>
-
-                          <button
-                            onClick={handleLogout}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 transition-all"
-                          >
-                            <LogOut className="w-5 h-5" />
-                            <div className="flex-1 text-left">
-                              <p className="text-sm font-medium">Logout</p>
-                              <p className="text-xs text-red-300/70">Sign out of your account</p>
-                            </div>
-                          </button>
-                        </div>
+                  {/* User Avatar - Direct Navigation */}
+                  <button
+                    onClick={handleAvatarClick}
+                    className="flex items-center"
+                  >
+                    {user.avatarLink ? (
+                      <img
+                        src={user.avatarLink}
+                        alt={user.name}
+                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border-2 border-[#1dddf2]/50 hover:border-[#1dddf2] transition-all"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-[#1dddf2] to-[#00ff11] flex items-center justify-center border-2 border-[#1dddf2]/50 hover:border-[#1dddf2] transition-all">
+                        <span className="text-white font-semibold text-sm">
+                          {user.name?.[0]?.toUpperCase() || "U"}
+                        </span>
                       </div>
                     )}
-                  </div>
+                  </button>
                 </>
               ) : (
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="relative bg-gradient-to-r from-[#1dddf2] to-[#00ff11] hover:shadow-[0_0_15px_rgba(29,221,242,0.6)] text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-full font-semibold text-xs sm:text-sm transition-colors overflow-hidden"
+                  className="px-4 sm:px-6 py-2 sm:py-2.5 text-gray-100 border border-[#1dddf2] neon-border hover:border-[#1dddf2]/30 hover:shadow-[0_0_10px_rgba(29,221,242,0.3)] rounded-full font-semibold text-xs sm:text-sm transition-all whitespace-nowrap"
                 >
-                  <span className="relative z-10 whitespace-nowrap">
-                    Sign Up
-                  </span>
-                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent translate-x-[-100%] animate-shimmer"></span>
+                  Sign Up
                 </button>
               )}
             </div>
